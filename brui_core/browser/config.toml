@@ -1,0 +1,4 @@
+[browser]
+chrome_profile_directory = "Profile 1"
+remote_debugging_port = 9222
+remote_host = "localhost"
