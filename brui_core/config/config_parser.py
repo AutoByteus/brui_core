@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from llm_ui_integration.singleton_meta import ABCSingletonMeta
+from brui_core.singleton_meta import ABCSingletonMeta
 import toml
 import os
 

@@ -5,7 +5,7 @@ from typing import Optional
 
 from playwright.async_api import Browser, BrowserContext, Page
 
-from llm_ui_integration.browser.browser_manager import BrowserManager
+from brui_core.browser.browser_manager import BrowserManager
 
 logger = logging.getLogger(__name__)
 

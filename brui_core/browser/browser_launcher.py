@@ -4,7 +4,7 @@ import subprocess
 import socket
 import asyncio
 
-from llm_ui_integration.config.config_parser import EnvironmentConfigParser, TOMLConfigParser
+from brui_core.config.config_parser import EnvironmentConfigParser, TOMLConfigParser
 
 # Function to launch the browser based on the operating system
 async def launch_browser():

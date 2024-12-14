@@ -5,12 +5,12 @@ from typing import Optional
 from playwright.async_api import async_playwright
 from playwright.async_api import Browser
 
-from llm_ui_integration.browser.browser_launcher import (
+from brui_core.browser.browser_launcher import (
     is_browser_opened_in_debug_mode,
     launch_browser,
     remote_debugging_port
 )
-from llm_ui_integration.singleton_meta import SingletonMeta
+from brui_core.singleton_meta import SingletonMeta
 
 logger = logging.getLogger(__name__)
 
