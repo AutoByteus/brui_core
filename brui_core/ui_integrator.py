@@ -20,12 +20,12 @@ class UIIntegrator:
         self._keep_alive_interval = 60  # seconds
 
     async def initialize(self):
+        """Initialize the browser and create a new page."""
         await self.browser_manager.ensure_browser_launched()
         browser = await self.browser_manager.connect_browser()
         self.context = browser.contexts[0]
         self.page = await self.context.new_page()
         self.initialized = True
-        await self._start_keep_alive()
         logger.info("UIIntegrator initialized successfully")
 
     async def _keep_alive(self):
@@ -48,7 +48,7 @@ class UIIntegrator:
             
             await asyncio.sleep(self._keep_alive_interval)
 
-    async def _start_keep_alive(self):
+    async def start_keep_alive(self):
         """Start the keep-alive background task."""
         if self._keep_alive_task is None or self._keep_alive_task.done():
             self._keep_alive_task = asyncio.create_task(self._keep_alive())
@@ -66,6 +66,7 @@ class UIIntegrator:
             logger.info("Keep-alive task stopped")
 
     async def reopen_page(self):
+        """Reopen the page if it's closed."""
         if not self.initialized:
             logger.error("UIIntegrator is not initialized. Call initialize() first.")
             raise RuntimeError("UIIntegrator is not initialized")
@@ -82,6 +83,7 @@ class UIIntegrator:
             raise
 
     async def close(self, close_page=True, close_context=False, close_browser=False):
+        """Close the integrator and optionally its components."""
         try:
             await self._stop_keep_alive()
 
