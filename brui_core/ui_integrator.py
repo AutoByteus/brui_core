@@ -1,3 +1,4 @@
+
 import asyncio
 from abc import ABC
 import logging
@@ -15,6 +16,8 @@ class UIIntegrator:
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
         self.initialized = False
+        self._keep_alive_task: Optional[asyncio.Task] = None
+        self._keep_alive_interval = 60  # seconds
 
     async def initialize(self):
         await self.browser_manager.ensure_browser_launched()
@@ -22,7 +25,45 @@ class UIIntegrator:
         self.context = browser.contexts[0]
         self.page = await self.context.new_page()
         self.initialized = True
+        await self._start_keep_alive()
         logger.info("UIIntegrator initialized successfully")
+
+    async def _keep_alive(self):
+        """Background task to keep the page alive by performing periodic checks."""
+        while True:
+            try:
+                if self.page and not self.page.is_closed():
+                    # Perform a minimal interaction that won't affect page state
+                    await self.page.evaluate("1")
+                    logger.debug("Keep-alive check performed successfully")
+                else:
+                    logger.warning("Page is closed during keep-alive check")
+                    await self.reopen_page()
+            except Exception as e:
+                logger.error(f"Error in keep-alive check: {str(e)}")
+                try:
+                    await self.reopen_page()
+                except Exception as reopen_error:
+                    logger.error(f"Failed to reopen page after keep-alive error: {str(reopen_error)}")
+            
+            await asyncio.sleep(self._keep_alive_interval)
+
+    async def _start_keep_alive(self):
+        """Start the keep-alive background task."""
+        if self._keep_alive_task is None or self._keep_alive_task.done():
+            self._keep_alive_task = asyncio.create_task(self._keep_alive())
+            logger.info("Keep-alive task started")
+
+    async def _stop_keep_alive(self):
+        """Stop the keep-alive background task."""
+        if self._keep_alive_task and not self._keep_alive_task.done():
+            self._keep_alive_task.cancel()
+            try:
+                await self._keep_alive_task
+            except asyncio.CancelledError:
+                pass
+            self._keep_alive_task = None
+            logger.info("Keep-alive task stopped")
 
     async def reopen_page(self):
         if not self.initialized:
@@ -42,6 +83,8 @@ class UIIntegrator:
 
     async def close(self, close_page=True, close_context=False, close_browser=False):
         try:
+            await self._stop_keep_alive()
+
             if close_page and self.page:
                 await self.page.close()
                 self.page = None
