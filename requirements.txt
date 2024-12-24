@@ -1,6 +1,5 @@
 pyperclip
-pytest-playwright==0.4.4
-playwright==1.42.0
+playwright==1.49
 toml
 pytest-asyncio
 colorama
