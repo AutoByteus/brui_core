@@ -1,3 +1,4 @@
+README.md
 setup.py
 brui_core/__init__.py
 brui_core/singleton_meta.py
@@ -15,3 +16,8 @@ brui_core/clipboard/__init__.py
 brui_core/clipboard/clipboard_manager.py
 brui_core/config/__init__.py
 brui_core/config/config_parser.py
+tests/__init__.py
+tests/integration/__init__.py
+tests/integration/browser/__init__.py
+tests/integration/browser/test_browser_launcher.py
+tests/integration/browser/test_browser_manager.py

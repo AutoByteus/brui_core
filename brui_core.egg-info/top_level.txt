@@ -1,1 +1,2 @@
 brui_core
+tests
