@@ -1,4 +1,3 @@
-
 import pytest
 import asyncio
 import os
@@ -12,7 +11,7 @@ from brui_core.browser.browser_launcher import (
     is_browser_opened_in_debug_mode,
     get_browser_config,
     get_chrome_pids,
-    remote_debugging_port
+    remote_debugging_port,
 )
 
 
@@ -27,7 +26,7 @@ def setup_and_cleanup():
 def is_port_in_use(port):
     """Check if a port is actually in use"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(('localhost', port)) == 0
+        return s.connect_ex(("localhost", port)) == 0
 
 
 @pytest.mark.asyncio
@@ -53,7 +52,9 @@ async def test_launch_and_kill_browser_flow():
 
     # Verify cleanup
     assert not get_chrome_pids(), "Chrome processes still running after kill"
-    assert not await is_browser_opened_in_debug_mode(), "Debug port still open after kill"
+    assert (
+        not await is_browser_opened_in_debug_mode()
+    ), "Debug port still open after kill"
     assert not is_port_in_use(remote_debugging_port), "Debug port still in use"
 
 
@@ -85,7 +86,9 @@ async def test_multiple_launch_attempts():
     assert new_count == initial_count, "Multiple launches created extra processes"
 
     # Debug port should still be accessible
-    assert await is_browser_opened_in_debug_mode(), "Debug mode not accessible after second launch"
+    assert (
+        await is_browser_opened_in_debug_mode()
+    ), "Debug mode not accessible after second launch"
 
     # Cleanup
     kill_all_chrome_processes()
@@ -112,28 +115,30 @@ download_directory = "/tmp/downloads"
 def test_config_loading(temp_config):
     """Test loading real and overridden configuration files"""
     # Set environment variable to use the temporary config file
-    os.environ['BROWSER_CONFIG_PATH'] = str(temp_config)
+    os.environ["BROWSER_CONFIG_PATH"] = str(temp_config)
 
     config = get_browser_config()
-    assert config['browser']['chrome_profile_directory'] == "Integration Test Profile"
-    assert config['browser']['remote_debugging_port'] == 9222
-    assert config['browser']['remote_host'] == "localhost"
-    assert config['browser']['download_directory'] == "/tmp/downloads"
+
+    print(config)
+    assert config["browser"]["chrome_profile_directory"] == "Integration Test Profile"
+    assert config["browser"]["remote_debugging_port"] == 9222
+    assert config["browser"]["remote_host"] == "localhost"
+    assert config["browser"]["download_directory"] == "/tmp/downloads"
 
     # Override chrome_profile_directory using environment variable
-    os.environ['CHROME_PROFILE_DIRECTORY'] = "Override Profile"
+    os.environ["CHROME_PROFILE_DIRECTORY"] = "Override Profile"
     config = get_browser_config()
-    assert config['browser']['chrome_profile_directory'] == "Override Profile"
+    assert config["browser"]["chrome_profile_directory"] == "Override Profile"
 
     # Override download_directory using environment variable
-    os.environ['CHROME_DOWNLOAD_DIRECTORY'] = "/override/downloads"
+    os.environ["CHROME_DOWNLOAD_DIRECTORY"] = "/override/downloads"
     config = get_browser_config()
-    assert config['browser']['download_directory'] == "/override/downloads"
+    assert config["browser"]["download_directory"] == "/override/downloads"
 
     # Cleanup environment variables
-    del os.environ['BROWSER_CONFIG_PATH']
-    del os.environ['CHROME_PROFILE_DIRECTORY']
-    del os.environ['CHROME_DOWNLOAD_DIRECTORY']
+    del os.environ["BROWSER_CONFIG_PATH"]
+    del os.environ["CHROME_PROFILE_DIRECTORY"]
+    del os.environ["CHROME_DOWNLOAD_DIRECTORY"]
 
 
 @pytest.mark.asyncio
@@ -146,12 +151,13 @@ async def test_browser_startup_timeout():
     # Temporarily set remote_debugging_port to an unused port to simulate timeout
     original_port = remote_debugging_port
     unused_port = 9999
+
     try:
-        os.environ['REMOTE_DEBUGGING_PORT'] = str(unused_port)
+        os.environ["REMOTE_DEBUGGING_PORT"] = str(unused_port)
         with pytest.raises(TimeoutError):
             await launch_browser(timeout=5)
     finally:
-        os.environ['REMOTE_DEBUGGING_PORT'] = str(original_port)
+        os.environ["REMOTE_DEBUGGING_PORT"] = str(original_port)
         kill_all_chrome_processes()
         await asyncio.sleep(2)
 
@@ -166,14 +172,18 @@ def test_kill_nonexistent_browser():
     try:
         kill_all_chrome_processes()
     except Exception as e:
-        pytest.fail(f"kill_all_chrome_processes raised an exception when no processes exist: {e}")
+        pytest.fail(
+            f"kill_all_chrome_processes raised an exception when no processes exist: {e}"
+        )
 
 
 @pytest.mark.asyncio
 async def test_debug_mode_check():
     """Test debug mode detection with actual browser"""
     # Initial state
-    assert not await is_browser_opened_in_debug_mode(), "Debug mode active before browser launch"
+    assert (
+        not await is_browser_opened_in_debug_mode()
+    ), "Debug mode active before browser launch"
 
     # Launch browser
     await launch_browser()
@@ -182,8 +192,12 @@ async def test_debug_mode_check():
     await asyncio.sleep(5)
 
     # Verify debug mode
-    assert await is_browser_opened_in_debug_mode(), "Debug mode not detected after launch"
-    assert is_port_in_use(remote_debugging_port), "Debug port not actually listening after launch"
+    assert (
+        await is_browser_opened_in_debug_mode()
+    ), "Debug mode not detected after launch"
+    assert is_port_in_use(
+        remote_debugging_port
+    ), "Debug port not actually listening after launch"
 
     # Kill browser
     kill_all_chrome_processes()
@@ -192,5 +206,9 @@ async def test_debug_mode_check():
     await asyncio.sleep(5)
 
     # Verify debug mode inactive
-    assert not await is_browser_opened_in_debug_mode(), "Debug mode still active after kill"
-    assert not is_port_in_use(remote_debugging_port), "Debug port still in use after kill"
+    assert (
+        not await is_browser_opened_in_debug_mode()
+    ), "Debug mode still active after kill"
+    assert not is_port_in_use(
+        remote_debugging_port
+    ), "Debug port still in use after kill"

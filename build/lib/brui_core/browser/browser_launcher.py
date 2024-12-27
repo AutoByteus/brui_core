@@ -5,8 +5,10 @@ import socket
 import asyncio
 import time
 import logging
-from typing import List, Optional, Set, Tuple, Dict, NamedTuple
+from typing import Optional, Set, NamedTuple
 
+# Assuming `brui_core.config.config_parser` modules are available
+# If not, you may need to implement or mock these modules
 from brui_core.config.config_parser import EnvironmentConfigParser, TOMLConfigParser
 
 logger = logging.getLogger(__name__)
@@ -38,7 +40,7 @@ def get_chrome_startup_path() -> str:
                 return path
         raise FileNotFoundError("Chrome executable not found in standard locations")
     raise Exception(
-        "Unsupported OS. This script supports Windows, Linux and macOS only."
+        "Unsupported OS. This script supports Windows, Linux, and macOS only."
     )
 
 
@@ -53,7 +55,7 @@ def get_chrome_process_path() -> str:
     elif sys.platform == "win32":
         return "chrome.exe"
     raise Exception(
-        "Unsupported OS. This script supports Windows, Linux and macOS only."
+        "Unsupported OS. This script supports Windows, Linux, and macOS only."
     )
 
 
@@ -78,9 +80,11 @@ def get_chrome_pids() -> Set[ChromeProcess]:
                     )
                 )
         else:
-            # Existing Linux/macOS implementation
+            # Linux/macOS implementation
+
             if sys.platform == "darwin":
                 cmd = ["ps", "-ax", "-o", "pid=,ppid=,command="]
+
             else:
                 cmd = ["ps", "-eo", "pid=,ppid=,cmd="]
 
@@ -229,6 +233,7 @@ async def wait_for_browser_start(timeout=20, retry_interval=1):
         TimeoutError: If browser doesn't start within timeout period
     """
     start_time = asyncio.get_event_loop().time()
+
     while not await is_browser_opened_in_debug_mode():
         if asyncio.get_event_loop().time() - start_time > timeout:
             raise TimeoutError(
@@ -237,25 +242,37 @@ async def wait_for_browser_start(timeout=20, retry_interval=1):
         await asyncio.sleep(retry_interval)
 
 
-async def launch_browser():
+async def launch_browser(timeout=20):
     """
     Launches a new instance of Chrome in debug mode.
     Before launching, it assumes that any necessary cleanup (like killing existing Chrome processes)
     has already been performed if needed.
+
+    :param timeout: Maximum time to wait for the browser to start in seconds.
     """
     executable_path = get_chrome_startup_path()
 
+    # Construct the user data directory path
+    user_data_dir = os.path.join(os.getcwd(), "ChromeDebugUserData")
+    os.makedirs(user_data_dir, exist_ok=True)
+
     # Browser launch arguments
     args = [
+        executable_path,
         "--no-first-run",
-        "--flag-switches-begin",
-        "--flag-switches-end",
+        "--no-default-browser-check",
+        "--disable-extensions",
         f"--remote-debugging-port={remote_debugging_port}",
+        f"--user-data-dir={user_data_dir}",
         f"--profile-directory={chrome_profile_directory}",
     ]
 
-    subprocess.Popen([executable_path] + args)
-    await wait_for_browser_start()
+    # Launch Chrome in debug mode
+    subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    logger.info(f"Chrome launched in debug mode on port {remote_debugging_port}.")
+
+    # Wait for Chrome to start and listen on the debug port
+    await wait_for_browser_start(timeout=timeout)
 
 
 def get_browser_config():
@@ -283,6 +300,14 @@ def get_browser_config():
             "CHROME_DOWNLOAD_DIRECTORY"
         ]
 
+    # Ensure remote_debugging_port and remote_host are integers and strings
+    browser_config["browser"]["remote_debugging_port"] = int(
+        browser_config.get("browser", {}).get("remote_debugging_port", 9222)
+    )
+    browser_config["browser"]["remote_host"] = browser_config.get("browser", {}).get(
+        "remote_host", "localhost"
+    )
+
     return browser_config
 
 
@@ -296,3 +321,27 @@ remote_debugging_port = browser_config.get("browser", {}).get(
     "remote_debugging_port", 9222
 )
 remote_host = browser_config.get("browser", {}).get("remote_host", "localhost")
+
+
+# Main execution function
+async def main():
+    try:
+        # Kill existing Chrome processes
+        kill_all_chrome_processes()
+
+        # Launch Chrome in debug mode
+        await launch_browser()
+
+        logger.info("Browser launched successfully in debug mode.")
+
+        # Here you can include additional logic to interact with the browser
+        # For example, send commands via the DevTools Protocol
+
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+
+
+# Run the main function
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    asyncio.run(main())
