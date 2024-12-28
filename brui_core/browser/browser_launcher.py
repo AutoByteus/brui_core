@@ -236,10 +236,26 @@ def get_browser_config():
     # Override chrome_profile_directory if CHROME_PROFILE_DIRECTORY environment variable is set
     if "CHROME_PROFILE_DIRECTORY" in os.environ:
         browser_config["browser"]["chrome_profile_directory"] = os.environ["CHROME_PROFILE_DIRECTORY"]
+        logger.debug(f"Overriding chrome_profile_directory from environment: {browser_config['browser']['chrome_profile_directory']}")
     
     # Override download_directory if CHROME_DOWNLOAD_DIRECTORY environment variable is set
     if "CHROME_DOWNLOAD_DIRECTORY" in os.environ:
         browser_config["browser"]["download_directory"] = os.environ["CHROME_DOWNLOAD_DIRECTORY"]
+        logger.debug(f"Overriding download_directory from environment: {browser_config['browser']['download_directory']}")
+    
+    # Override remote_host if CHROME_REMOTE_HOST environment variable is set
+    if "CHROME_REMOTE_HOST" in os.environ:
+        browser_config["browser"]["remote_host"] = os.environ["CHROME_REMOTE_HOST"]
+        logger.debug(f"Overriding remote_host from environment: {browser_config['browser']['remote_host']}")
+    
+    # Override remote_debugging_port if CHROME_REMOTE_DEBUGGING_PORT environment variable is set
+    if "CHROME_REMOTE_DEBUGGING_PORT" in os.environ:
+        try:
+            port = int(os.environ["CHROME_REMOTE_DEBUGGING_PORT"])
+            browser_config["browser"]["remote_debugging_port"] = port
+            logger.debug(f"Overriding remote_debugging_port from environment: {port}")
+        except ValueError:
+            logger.error(f"Invalid port number in CHROME_REMOTE_DEBUGGING_PORT: {os.environ['CHROME_REMOTE_DEBUGGING_PORT']}")
     
     return browser_config
 
