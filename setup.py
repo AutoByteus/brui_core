@@ -1,3 +1,4 @@
+
 from setuptools import setup, find_packages
 
 setup(
@@ -16,7 +17,7 @@ setup(
         'colorama',
         'Pillow',
     ],
-    author='AFE AI',
+    author='Ryan Zheng',
     author_email='ryan.zheng.work@gmail.com',
     description='Core browser UI automation framework',
     long_description='''
