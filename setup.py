@@ -1,9 +1,8 @@
-
 from setuptools import setup, find_packages
 
 setup(
     name='brui_core',
-    version='0.1.0',
+    version='1.0.0',
     packages=find_packages(),
     package_data={
         'brui_core': ['browser/config.toml']
@@ -29,7 +28,7 @@ setup(
     ''',
     long_description_content_type='text/markdown',
     license='MIT',
-    url='https://github.com/AFE-AI/brui_core',
+    url='https://github.com/AutoByteus/brui_core.git',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

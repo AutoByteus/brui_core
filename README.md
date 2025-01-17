@@ -80,4 +80,4 @@ For support, please open an issue in the GitHub repository.
 ## Acknowledgments
 
 - Built with Playwright
-- Developed by AFE AI
+- Developed by AutoByteus
