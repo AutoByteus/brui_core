@@ -6,6 +6,8 @@ setup(
     packages=find_packages(),
     install_requires=[
         'playwright==1.42.0',
+        'pyperclip',
+        'Pillow',
     ],
     extras_require={
         'test': [
