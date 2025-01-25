@@ -1,4 +1,3 @@
-
 import os
 import sys
 import subprocess
@@ -8,7 +7,14 @@ import time
 import logging
 from typing import List, Optional, Set, Tuple, Dict, NamedTuple
 
-from brui_core.config.config_parser import EnvironmentConfigParser, TOMLConfigParser
+# Static configuration
+CONFIG = {
+    "browser": {
+        "chrome_profile_directory": "Profile 1",
+        "remote_debugging_port": 9222,
+        "remote_host": "localhost"
+    }
+}
 
 logger = logging.getLogger(__name__)
 
@@ -222,26 +228,14 @@ async def launch_browser():
 
 def get_browser_config():
     """
-    Retrieve browser configuration from environment variables or config file.
+    Get browser configuration with environment variable overrides.
     """
-    if "BROWSER_CONFIG_PATH" in os.environ:
-        config_parser = EnvironmentConfigParser("BROWSER_CONFIG_PATH")
-        browser_config = config_parser.parse()
-    else:
-        current_file = os.path.realpath(__file__)
-        config_file = os.path.join(os.path.dirname(current_file), "config.toml")
-        config_parser = TOMLConfigParser()
-        browser_config = config_parser.parse(config_file)
+    browser_config = CONFIG.copy()
     
     # Override chrome_profile_directory if CHROME_PROFILE_DIRECTORY environment variable is set
     if "CHROME_PROFILE_DIRECTORY" in os.environ:
         browser_config["browser"]["chrome_profile_directory"] = os.environ["CHROME_PROFILE_DIRECTORY"]
         logger.debug(f"Overriding chrome_profile_directory from environment: {browser_config['browser']['chrome_profile_directory']}")
-    
-    # Override download_directory if CHROME_DOWNLOAD_DIRECTORY environment variable is set
-    if "CHROME_DOWNLOAD_DIRECTORY" in os.environ:
-        browser_config["browser"]["download_directory"] = os.environ["CHROME_DOWNLOAD_DIRECTORY"]
-        logger.debug(f"Overriding download_directory from environment: {browser_config['browser']['download_directory']}")
     
     # Override remote_host if CHROME_REMOTE_HOST environment variable is set
     if "CHROME_REMOTE_HOST" in os.environ:

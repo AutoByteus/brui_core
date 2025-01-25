@@ -3,5 +3,4 @@ pytest-playwright==0.4.4
 playwright==1.42.0
 toml
 pytest-asyncio
-colorama
 Pillow

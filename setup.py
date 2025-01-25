@@ -2,20 +2,18 @@ from setuptools import setup, find_packages
 
 setup(
     name='brui_core',
-    version='1.0.0',
+    version='1.0.1',
     packages=find_packages(),
-    package_data={
-        'brui_core': ['browser/config.toml']
-    },
     install_requires=[
-        'pyperclip',
-        'pytest-playwright==0.4.4',
         'playwright==1.42.0',
-        'toml',
-        'pytest-asyncio',
-        'colorama',
-        'Pillow',
     ],
+    extras_require={
+        'test': [
+            'pytest-playwright==0.4.4',
+            'playwright==1.42.0',
+            'pytest-asyncio',
+        ],
+    },
     author='Ryan Zheng',
     author_email='ryan.zheng.work@gmail.com',
     description='Core browser UI automation framework',
@@ -25,6 +23,9 @@ setup(
     - Configuration handling
     - Clipboard management
     - Base UI integration capabilities
+    
+    To install with testing dependencies:
+    pip install brui_core[test]
     ''',
     long_description_content_type='text/markdown',
     license='MIT',
