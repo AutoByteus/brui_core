@@ -1,4 +1,3 @@
-
 import asyncio
 from abc import ABC
 import logging
@@ -21,10 +20,33 @@ class UIIntegrator:
 
     async def initialize(self):
         """Initialize the browser and create a new page."""
+        logger.info("Starting UIIntegrator initialization")
+        
+        logger.info("Ensuring browser is launched...")
         await self.browser_manager.ensure_browser_launched()
+        logger.info("Browser launch check completed successfully")
+        
+        logger.info("Connecting to browser...")
         browser = await self.browser_manager.connect_browser()
-        self.context = browser.contexts[0]
-        self.page = await self.context.new_page()
+        logger.info("Successfully connected to browser")
+        
+        logger.info("Accessing browser context...")
+        try:
+            # Use the get_browser_context method instead of direct access
+            self.context = await self.browser_manager.get_browser_context(browser)
+            logger.info(f"Successfully accessed browser context. Pages in context: {len(self.context.pages)}")
+        except Exception as e:
+            logger.error(f"Failed to access browser context: {str(e)}")
+            raise
+        
+        logger.info("Creating new page...")
+        try:
+            self.page = await self.context.new_page()
+            logger.info(f"New page created successfully. URL: {self.page.url}")
+        except Exception as e:
+            logger.error(f"Failed to create new page: {str(e)}")
+            raise
+        
         self.initialized = True
         logger.info("UIIntegrator initialized successfully")
 
