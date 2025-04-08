@@ -1,14 +1,23 @@
 import pyperclip
 import asyncio
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
+
+# Configure pyperclip to use a Linux-compatible clipboard command when running on Linux.
+if sys.platform.startswith('linux'):
+    try:
+        pyperclip.set_clipboard('xclip')
+        logger.debug("pyperclip clipboard set to 'xclip' for Linux environment.")
+    except Exception as e:
+        logger.error(f"Failed to set clipboard to 'xclip': {e}")
 
 async def wait_for_clipboard_content():
     """
     Wait for the clipboard content to change and return the new content.
     
-    :return: The new clipboard content as a string
+    :return: The new clipboard content as a string.
     """
     initial_clipboard = pyperclip.paste()
     if initial_clipboard != '':
@@ -52,7 +61,7 @@ async def ensure_clipboard_is_empty(max_retries: int = 3, retry_delay: float = 0
                 return True
             
             logger.warning(f"Clipboard not empty after clearing attempt {attempt + 1}. "
-                          f"Content length: {len(clipboard_content)}")
+                           f"Content length: {len(clipboard_content)}")
             
             # Wait before retrying
             if attempt < max_retries - 1:
