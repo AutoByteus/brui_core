@@ -8,7 +8,7 @@ from playwright.async_api import Browser, BrowserContext
 from brui_core.browser.browser_launcher import (
     is_browser_opened_in_debug_mode,
     launch_browser,
-    remote_debugging_port
+    get_browser_config
 )
 from brui_core.singleton_meta import SingletonMeta
 
@@ -123,7 +123,9 @@ class BrowserManager(metaclass=SingletonMeta):
             if self.playwright is None:
                 self.playwright = await async_playwright().start()
                 
-            # Connect to the browser
+            # Fetch configuration for remote debugging port at runtime
+            config = get_browser_config()
+            remote_debugging_port = config["browser"].get("remote_debugging_port", 9222)
             endpoint_url = f"http://localhost:{remote_debugging_port}"
             self.browser = await self.playwright.chromium.connect_over_cdp(endpoint_url)
             return self.browser

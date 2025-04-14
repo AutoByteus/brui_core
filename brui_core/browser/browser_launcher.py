@@ -5,7 +5,7 @@ import socket
 import asyncio
 import time
 import logging
-from typing import List, Optional, Set, Tuple, Dict, NamedTuple
+from typing import Set, Optional, NamedTuple
 
 # Static configuration
 CONFIG = {
@@ -25,41 +25,30 @@ class ChromeProcess(NamedTuple):
 
 def get_chrome_startup_path() -> str:
     """
-    Returns the appropriate Chrome startup path based on the operating system.
-    This is the path used to launch Chrome.
+    Returns the Chrome startup path for Linux.
+    This path is used to launch Chrome on Linux systems.
     """
-    if sys.platform == 'darwin':
-        return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    elif sys.platform == 'linux':
-        return '/usr/bin/google-chrome'
-    raise Exception("Unsupported OS. This script supports Linux and macOS only.")
+    # Linux path for starting Google Chrome
+    return '/usr/bin/google-chrome'
 
 def get_chrome_process_path() -> str:
     """
-    Returns the path to match against running Chrome processes.
+    Returns the path to match against running Chrome processes on Linux.
     This is the actual executable path seen in ps output.
     """
-    if sys.platform == 'darwin':
-        return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    elif sys.platform == 'linux':
-        return '/opt/google/chrome/chrome'
-    raise Exception("Unsupported OS. This script supports Linux and macOS only.")
+    return '/opt/google/chrome/chrome'
 
 def get_chrome_pids() -> Set[ChromeProcess]:
     """
-    Get all Chrome process PIDs using platform-specific commands.
+    Get all Chrome process PIDs using Linux specific commands.
     Returns a set of ChromeProcess objects containing pid, ppid, and command.
     """
     try:
         chrome_path = get_chrome_process_path()
         chrome_processes = set()
 
-        if sys.platform == 'darwin':
-            # macOS (BSD) ps syntax
-            cmd = ['ps', '-ax', '-o', 'pid=,ppid=,command=']
-        else:
-            # Linux (GNU) ps syntax
-            cmd = ['ps', '-eo', 'pid=,ppid=,cmd=']
+        # Linux (GNU) ps syntax
+        cmd = ['ps', '-eo', 'pid=,ppid=,cmd=']
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         
@@ -181,6 +170,9 @@ async def is_browser_opened_in_debug_mode():
     Check if the browser is opened in debug mode by attempting to connect to the debug port.
     """
     try:
+        config = get_browser_config()
+        remote_host = config["browser"].get("remote_host", "localhost")
+        remote_debugging_port = config["browser"].get("remote_debugging_port", 9222)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(1)
             result = sock.connect_ex((remote_host, remote_debugging_port))
@@ -203,6 +195,8 @@ async def wait_for_browser_start(timeout=20, retry_interval=1):
     start_time = asyncio.get_event_loop().time()
     while not await is_browser_opened_in_debug_mode():
         if asyncio.get_event_loop().time() - start_time > timeout:
+            config = get_browser_config()
+            remote_debugging_port = config["browser"].get("remote_debugging_port", 9222)
             raise TimeoutError(f"Timed out waiting for port {remote_debugging_port} to listen")
         await asyncio.sleep(retry_interval)
 
@@ -212,6 +206,11 @@ async def launch_browser():
     Before launching, it assumes that any necessary cleanup (like killing existing Chrome processes)
     has already been performed if needed.
     """
+    # Fetch current configuration values when needed
+    config = get_browser_config()
+    chrome_profile_directory = config["browser"].get("chrome_profile_directory", "Default")
+    remote_debugging_port = config["browser"].get("remote_debugging_port", 9222)
+
     executable_path = get_chrome_startup_path()
 
     # Browser launch arguments
@@ -251,11 +250,9 @@ def get_browser_config():
         except ValueError:
             logger.error(f"Invalid port number in CHROME_REMOTE_DEBUGGING_PORT: {os.environ['CHROME_REMOTE_DEBUGGING_PORT']}")
     
+    # Override download_directory if CHROME_DOWNLOAD_DIRECTORY is set
+    if "CHROME_DOWNLOAD_DIRECTORY" in os.environ:
+        browser_config["browser"]["download_directory"] = os.environ["CHROME_DOWNLOAD_DIRECTORY"]
+        logger.debug(f"Overriding download_directory from environment: {browser_config['browser']['download_directory']}")
+
     return browser_config
-
-# Load browser configuration
-browser_config = get_browser_config()
-
-chrome_profile_directory = browser_config.get("browser", {}).get("chrome_profile_directory", "Default")
-remote_debugging_port = browser_config.get("browser", {}).get("remote_debugging_port", 9222)
-remote_host = browser_config.get("browser", {}).get("remote_host", "localhost")
