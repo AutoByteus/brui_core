@@ -5,14 +5,14 @@ import socket
 import asyncio
 import time
 import logging
+import copy
 from typing import Set, Optional, NamedTuple
 
 # Static configuration
 CONFIG = {
     "browser": {
         "chrome_profile_directory": "Profile 1",
-        "remote_debugging_port": 9222,
-        "remote_host": "localhost"
+        "remote_debugging_port": 9222
     }
 }
 
@@ -171,7 +171,7 @@ async def is_browser_opened_in_debug_mode():
     """
     try:
         config = get_browser_config()
-        remote_host = config["browser"].get("remote_host", "localhost")
+        remote_host = "localhost"
         remote_debugging_port = config["browser"].get("remote_debugging_port", 9222)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(1)
@@ -229,17 +229,13 @@ def get_browser_config():
     """
     Get browser configuration with environment variable overrides.
     """
-    browser_config = CONFIG.copy()
+    # Use deepcopy to prevent side-effects from modifying the config dict
+    browser_config = copy.deepcopy(CONFIG)
     
     # Override chrome_profile_directory if CHROME_PROFILE_DIRECTORY environment variable is set
     if "CHROME_PROFILE_DIRECTORY" in os.environ:
         browser_config["browser"]["chrome_profile_directory"] = os.environ["CHROME_PROFILE_DIRECTORY"]
         logger.debug(f"Overriding chrome_profile_directory from environment: {browser_config['browser']['chrome_profile_directory']}")
-    
-    # Override remote_host if CHROME_REMOTE_HOST environment variable is set
-    if "CHROME_REMOTE_HOST" in os.environ:
-        browser_config["browser"]["remote_host"] = os.environ["CHROME_REMOTE_HOST"]
-        logger.debug(f"Overriding remote_host from environment: {browser_config['browser']['remote_host']}")
     
     # Override remote_debugging_port if CHROME_REMOTE_DEBUGGING_PORT environment variable is set
     if "CHROME_REMOTE_DEBUGGING_PORT" in os.environ:
