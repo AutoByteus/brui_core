@@ -1,4 +1,3 @@
-
 import pytest
 import asyncio
 import os
@@ -12,7 +11,6 @@ from brui_core.browser.browser_launcher import (
     is_browser_opened_in_debug_mode,
     get_browser_config,
     get_chrome_pids,
-    remote_debugging_port
 )
 
 
@@ -45,8 +43,9 @@ async def test_launch_and_kill_browser_flow():
     assert chrome_processes, "No Chrome processes found after launch"
 
     # Verify debug port is listening
+    port = get_browser_config()["browser"]["remote_debugging_port"]
     assert await is_browser_opened_in_debug_mode(), "Debug port not open after launch"
-    assert is_port_in_use(remote_debugging_port), "Debug port not actually listening"
+    assert is_port_in_use(port), "Debug port not actually listening"
 
     # Kill browser
     kill_all_chrome_processes()
@@ -54,7 +53,7 @@ async def test_launch_and_kill_browser_flow():
     # Verify cleanup
     assert not get_chrome_pids(), "Chrome processes still running after kill"
     assert not await is_browser_opened_in_debug_mode(), "Debug port still open after kill"
-    assert not is_port_in_use(remote_debugging_port), "Debug port still in use"
+    assert not is_port_in_use(port), "Debug port still in use"
 
 
 @pytest.mark.asyncio
@@ -102,7 +101,6 @@ def temp_config(tmp_path):
 [browser]
 chrome_profile_directory = "Integration Test Profile"
 remote_debugging_port = 9222
-remote_host = "localhost"
 download_directory = "/tmp/downloads"
 """
     config_file.write_text(config_content)
@@ -117,7 +115,6 @@ def test_config_loading(temp_config):
     config = get_browser_config()
     assert config['browser']['chrome_profile_directory'] == "Integration Test Profile"
     assert config['browser']['remote_debugging_port'] == 9222
-    assert config['browser']['remote_host'] == "localhost"
     assert config['browser']['download_directory'] == "/tmp/downloads"
 
     # Override chrome_profile_directory using environment variable
@@ -139,19 +136,23 @@ def test_config_loading(temp_config):
 @pytest.mark.asyncio
 async def test_browser_startup_timeout():
     """Test browser startup with actual timeout"""
-    # First, kill all Chrome processes to ensure it doesn't start
+    # First, kill all Chrome processes to ensure a clean state
     kill_all_chrome_processes()
     await asyncio.sleep(2)
 
     # Temporarily set remote_debugging_port to an unused port to simulate timeout
-    original_port = remote_debugging_port
     unused_port = 9999
     try:
-        os.environ['REMOTE_DEBUGGING_PORT'] = str(unused_port)
+        os.environ['CHROME_REMOTE_DEBUGGING_PORT'] = str(unused_port)
         with pytest.raises(TimeoutError):
-            await launch_browser(timeout=5)
+            # launch_browser doesn't take a timeout, it uses the default.
+            # We expect this to time out because we're launching on a port
+            # that we're not listening to.
+            await launch_browser()
     finally:
-        os.environ['REMOTE_DEBUGGING_PORT'] = str(original_port)
+        # Clean up environment variable to not affect other tests
+        if 'CHROME_REMOTE_DEBUGGING_PORT' in os.environ:
+            del os.environ['CHROME_REMOTE_DEBUGGING_PORT']
         kill_all_chrome_processes()
         await asyncio.sleep(2)
 
@@ -182,8 +183,9 @@ async def test_debug_mode_check():
     await asyncio.sleep(5)
 
     # Verify debug mode
+    port = get_browser_config()["browser"]["remote_debugging_port"]
     assert await is_browser_opened_in_debug_mode(), "Debug mode not detected after launch"
-    assert is_port_in_use(remote_debugging_port), "Debug port not actually listening after launch"
+    assert is_port_in_use(port), "Debug port not actually listening after launch"
 
     # Kill browser
     kill_all_chrome_processes()
@@ -193,4 +195,4 @@ async def test_debug_mode_check():
 
     # Verify debug mode inactive
     assert not await is_browser_opened_in_debug_mode(), "Debug mode still active after kill"
-    assert not is_port_in_use(remote_debugging_port), "Debug port still in use after kill"
+    assert not is_port_in_use(port), "Debug port still in use after kill"

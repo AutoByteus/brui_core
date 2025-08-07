@@ -8,7 +8,8 @@ from playwright.async_api import Browser, BrowserContext
 from brui_core.browser.browser_launcher import (
     is_browser_opened_in_debug_mode,
     launch_browser,
-    get_browser_config
+    get_browser_config,
+    kill_all_chrome_processes
 )
 from brui_core.singleton_meta import SingletonMeta
 
@@ -139,3 +140,11 @@ class BrowserManager(metaclass=SingletonMeta):
     async def stop_browser(self):
         """Stop the browser and clean up resources"""
         await self.reset_browser_state()
+        try:
+            # Run the synchronous kill function in a separate thread to avoid blocking the event loop
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, kill_all_chrome_processes)
+            logger.info("Successfully terminated all Chrome processes via BrowserManager.")
+        except Exception as e:
+            logger.error(f"Error terminating Chrome processes during stop_browser: {e}")
+            raise
