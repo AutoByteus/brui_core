@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='brui_core',
-    version='1.0.8',
+    version='1.0.9',
     packages=find_packages(),
     install_requires=[
         'playwright==1.42.0',
