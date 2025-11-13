@@ -22,30 +22,37 @@ print_error() {
     exit 1
 }
 
-# Function to update version in setup.py
+# Function to update version in pyproject.toml
 update_version() {
     local version=$1
-    print_step "Updating version to $version in setup.py"
-    
-    # Use sed to replace version in setup.py
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS requires an empty string after -i
-        sed -i '' "s/version='[0-9]*\.[0-9]*\.[0-9]*'/version='$version'/" setup.py
-    else
-        # Linux version
-        sed -i "s/version='[0-9]*\.[0-9]*\.[0-9]*'/version='$version'/" setup.py
-    fi
-    
+    print_step "Updating version to $version in pyproject.toml"
+
+    VERSION_VALUE="$version" python - <<'PY'
+import os
+import re
+from pathlib import Path
+
+version = os.environ["VERSION_VALUE"]
+pyproject = Path("pyproject.toml")
+text = pyproject.read_text(encoding="utf-8")
+pattern = r'(?m)^version\s*=\s*"[0-9]+\.[0-9]+\.[0-9]+"'
+replacement = f'version = "{version}"'
+new_text, count = re.subn(pattern, replacement, text)
+if count == 0:
+    raise SystemExit("version field not found in pyproject.toml")
+pyproject.write_text(new_text, encoding="utf-8")
+PY
+
     if [ $? -eq 0 ]; then
         print_success "Version updated successfully"
     else
-        print_error "Failed to update version in setup.py"
+        print_error "Failed to update version in pyproject.toml"
     fi
 }
 
 # Check if version parameter is provided
 if [ -z "$1" ]; then
-    print_error "Please provide version number (e.g., ./publish.sh 1.0.0)"
+print_error "Please provide version number (e.g., ./publish.sh 1.0.0)"
 fi
 
 VERSION=$1
@@ -55,7 +62,7 @@ if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     print_error "Invalid version format. Please use semantic versioning (e.g., 1.0.0)"
 fi
 
-# Update version in setup.py
+# Update version in pyproject.toml
 update_version $VERSION
 
 # Ensure pip is up to date

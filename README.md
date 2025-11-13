@@ -12,8 +12,43 @@ A flexible and robust browser UI automation framework that provides essential fu
 
 ## Installation
 
+### From PyPI (recommended)
+
 ```bash
 pip install brui_core
+```
+
+### From source (editable)
+
+```bash
+git clone https://github.com/AutoByteus/brui_core.git
+cd brui_core
+python -m venv .venv
+source .venv/bin/activate  # or .venv\\Scripts\\activate on Windows
+pip install -r requirements.txt  # installs the package via -e .
+```
+
+### Development / testing extras
+
+```bash
+pip install -r requirements-dev.txt  # pulls in brui_core[test]
+```
+
+### Dependencies only (no package install)
+
+```bash
+pip install -r requirements-deps.txt
+```
+
+> Use this when you want all runtime dependencies without installing `brui_core` itself.
+
+### Build the distribution
+
+This project uses modern packaging via `pyproject.toml` and setuptools. To produce sdist/wheel artifacts:
+
+```bash
+pip install build
+python -m build
 ```
 
 ## Quick Start
@@ -41,9 +76,9 @@ asyncio.run(main())
 ## Requirements
 
 - Python 3.8+
-- Playwright
+- Playwright (pinned in `pyproject.toml` and installed automatically)
 - Chrome/Chromium browser installed
-- Additional dependencies listed in requirements.txt
+- Pillow, pyperclip, and other transitive dependencies installed with the package
 
 ## Configuration
 
