@@ -20,27 +20,33 @@ pip install brui_core
 
 ### From source (editable)
 
+#### Using `uv` (recommended)
+
+```bash
+git clone https://github.com/AutoByteus/brui_core.git
+cd brui_core
+uv sync
+```
+
+#### Using `pip`
+
 ```bash
 git clone https://github.com/AutoByteus/brui_core.git
 cd brui_core
 python -m venv .venv
-source .venv/bin/activate  # or .venv\\Scripts\\activate on Windows
-pip install -r requirements.txt  # installs the package via -e .
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+pip install -e .
 ```
 
 ### Development / testing extras
 
-```bash
-pip install -r requirements-dev.txt  # pulls in brui_core[test]
-```
-
-### Dependencies only (no package install)
+If using `uv`, dev dependencies are synced by default (or use `uv sync --all-extras`). 
+With `pip`:
 
 ```bash
-pip install -r requirements-deps.txt
+pip install -e .[test]
 ```
 
-> Use this when you want all runtime dependencies without installing `brui_core` itself.
 
 ### Build the distribution
 
