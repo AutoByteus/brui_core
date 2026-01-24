@@ -12,7 +12,8 @@ from typing import Set, Optional, NamedTuple
 CONFIG = {
     "browser": {
         "chrome_profile_directory": "Profile 1",
-        "remote_debugging_port": 9222
+        "remote_debugging_port": 9222,
+        "user_data_dir": None
     }
 }
 
@@ -210,6 +211,11 @@ async def launch_browser():
     config = get_browser_config()
     chrome_profile_directory = config["browser"].get("chrome_profile_directory", "Default")
     remote_debugging_port = config["browser"].get("remote_debugging_port", 9222)
+    user_data_dir = config["browser"].get("user_data_dir")
+
+    if not user_data_dir:
+        # Default to None to use the system default user data directory (preserving user profiles)
+        pass
 
     executable_path = get_chrome_startup_path()
 
@@ -222,7 +228,24 @@ async def launch_browser():
         f"--profile-directory={chrome_profile_directory}"
     ]
 
-    subprocess.Popen([executable_path] + args)
+    if user_data_dir:
+        args.append(f"--user-data-dir={user_data_dir}")
+
+    popen_kwargs = {}
+    log_path = os.environ.get("CHROME_LOG_PATH", "/tmp/brui-chrome.log")
+    log_file = None
+    if log_path:
+        log_dir = os.path.dirname(log_path)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        log_file = open(log_path, "wb")
+        popen_kwargs["stdout"] = log_file
+        popen_kwargs["stderr"] = log_file
+
+    subprocess.Popen([executable_path] + args, **popen_kwargs)
+
+    if log_file:
+        log_file.close()
     await wait_for_browser_start()
 
 def get_browser_config():
@@ -246,6 +269,11 @@ def get_browser_config():
         except ValueError:
             logger.error(f"Invalid port number in CHROME_REMOTE_DEBUGGING_PORT: {os.environ['CHROME_REMOTE_DEBUGGING_PORT']}")
     
+    # Override user_data_dir if CHROME_USER_DATA_DIR environment variable is set
+    if "CHROME_USER_DATA_DIR" in os.environ:
+        browser_config["browser"]["user_data_dir"] = os.environ["CHROME_USER_DATA_DIR"]
+        logger.debug(f"Overriding user_data_dir from environment: {browser_config['browser']['user_data_dir']}")
+
     # Override download_directory if CHROME_DOWNLOAD_DIRECTORY is set
     if "CHROME_DOWNLOAD_DIRECTORY" in os.environ:
         browser_config["browser"]["download_directory"] = os.environ["CHROME_DOWNLOAD_DIRECTORY"]

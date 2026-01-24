@@ -1,17 +1,24 @@
 import pytest
+import pytest_asyncio
 import asyncio
+import os
 from brui_core.browser.browser_manager import BrowserManager
 from brui_core.browser.browser_launcher import get_chrome_pids, kill_all_chrome_processes
 
-@pytest.fixture(autouse=True)
-def clean_chrome_state():
-    """Ensure a clean state by killing all Chrome processes before and after each test."""
-    kill_all_chrome_processes()
-    yield
-    kill_all_chrome_processes()
 
-@pytest.fixture
-def browser_manager(event_loop):
+@pytest.fixture(autouse=True)
+def setup_test_env(tmp_path):
+    """Set up test environment variables"""
+    # Chrome requires a user data dir for remote debugging
+    user_data_dir = tmp_path / "chrome_user_data_manager_tests"
+    os.environ['CHROME_USER_DATA_DIR'] = str(user_data_dir)
+    yield
+    if 'CHROME_USER_DATA_DIR' in os.environ:
+        del os.environ['CHROME_USER_DATA_DIR']
+
+
+@pytest_asyncio.fixture
+async def browser_manager():
     """
     Provide a clean BrowserManager instance for each test.
     This fixture ensures a fresh, isolated manager for each test and handles teardown.
@@ -21,9 +28,18 @@ def browser_manager(event_loop):
     manager = BrowserManager()
 
     yield manager
-    
-    # Run async cleanup in the event loop.
-    event_loop.run_until_complete(manager.stop_browser())
+
+    # Run async cleanup
+    await manager.stop_browser()
+
+
+@pytest.fixture(autouse=True)
+def cleanup_chrome():
+    """Ensure clean state before and after tests"""
+    kill_all_chrome_processes()
+    yield
+    kill_all_chrome_processes()
+
 
 @pytest.mark.asyncio
 async def test_initial_state(browser_manager):

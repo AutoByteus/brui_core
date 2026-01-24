@@ -4,6 +4,7 @@ import os
 import socket
 import time
 from pathlib import Path
+from unittest.mock import patch
 
 from brui_core.browser.browser_launcher import (
     launch_browser,
@@ -12,6 +13,17 @@ from brui_core.browser.browser_launcher import (
     get_browser_config,
     get_chrome_pids,
 )
+
+
+@pytest.fixture(autouse=True)
+def setup_test_env(tmp_path):
+    """Set up test environment variables"""
+    # Chrome requires a user data dir for remote debugging
+    user_data_dir = tmp_path / "chrome_user_data"
+    os.environ['CHROME_USER_DATA_DIR'] = str(user_data_dir)
+    yield
+    if 'CHROME_USER_DATA_DIR' in os.environ:
+        del os.environ['CHROME_USER_DATA_DIR']
 
 
 @pytest.fixture(autouse=True)
@@ -91,46 +103,32 @@ async def test_multiple_launch_attempts():
     await asyncio.sleep(5)
 
 
-@pytest.fixture
-def temp_config(tmp_path):
-    """Fixture to create a temporary config file"""
-    config_dir = tmp_path / "test_config"
-    config_dir.mkdir()
-    config_file = config_dir / "config.toml"
-    config_content = """
-[browser]
-chrome_profile_directory = "Integration Test Profile"
-remote_debugging_port = 9222
-download_directory = "/tmp/downloads"
-"""
-    config_file.write_text(config_content)
-    return config_file
 
+def test_config_loading():
+    """Test configuration overrides using environment variables"""
+    
+    # 1. Verify Default Configuration
+    # We clear relevant env vars first to be safe (though test runner isolation usually handles this)
+    if 'CHROME_PROFILE_DIRECTORY' in os.environ: del os.environ['CHROME_PROFILE_DIRECTORY']
+    if 'CHROME_DOWNLOAD_DIRECTORY' in os.environ: del os.environ['CHROME_DOWNLOAD_DIRECTORY']
+    
+    default_config = get_browser_config()
+    # Assuming "Profile 1" is the hardcoded default in browser_launcher.py
+    assert default_config['browser']['chrome_profile_directory'] == "Profile 1"
 
-def test_config_loading(temp_config):
-    """Test loading real and overridden configuration files"""
-    # Set environment variable to use the temporary config file
-    os.environ['BROWSER_CONFIG_PATH'] = str(temp_config)
-
-    config = get_browser_config()
-    assert config['browser']['chrome_profile_directory'] == "Integration Test Profile"
-    assert config['browser']['remote_debugging_port'] == 9222
-    assert config['browser']['download_directory'] == "/tmp/downloads"
-
-    # Override chrome_profile_directory using environment variable
+    # 2. Test Override chrome_profile_directory using environment variable
     os.environ['CHROME_PROFILE_DIRECTORY'] = "Override Profile"
     config = get_browser_config()
     assert config['browser']['chrome_profile_directory'] == "Override Profile"
 
-    # Override download_directory using environment variable
+    # 3. Test Override download_directory using environment variable
     os.environ['CHROME_DOWNLOAD_DIRECTORY'] = "/override/downloads"
     config = get_browser_config()
     assert config['browser']['download_directory'] == "/override/downloads"
 
     # Cleanup environment variables
-    del os.environ['BROWSER_CONFIG_PATH']
-    del os.environ['CHROME_PROFILE_DIRECTORY']
-    del os.environ['CHROME_DOWNLOAD_DIRECTORY']
+    if 'CHROME_PROFILE_DIRECTORY' in os.environ: del os.environ['CHROME_PROFILE_DIRECTORY']
+    if 'CHROME_DOWNLOAD_DIRECTORY' in os.environ: del os.environ['CHROME_DOWNLOAD_DIRECTORY']
 
 
 @pytest.mark.asyncio
@@ -144,11 +142,14 @@ async def test_browser_startup_timeout():
     unused_port = 9999
     try:
         os.environ['CHROME_REMOTE_DEBUGGING_PORT'] = str(unused_port)
-        with pytest.raises(TimeoutError):
-            # launch_browser doesn't take a timeout, it uses the default.
-            # We expect this to time out because we're launching on a port
-            # that we're not listening to.
-            await launch_browser()
+        
+        # Mock subprocess.Popen to do nothing, preventing the browser from starting
+        with patch('subprocess.Popen'):
+            with pytest.raises(TimeoutError):
+                # launch_browser will call Popen (which does nothing now)
+                # and then wait_for_browser_start will wait for the port to open
+                # which will never happen, causing TimeoutError.
+                await launch_browser()
     finally:
         # Clean up environment variable to not affect other tests
         if 'CHROME_REMOTE_DEBUGGING_PORT' in os.environ:

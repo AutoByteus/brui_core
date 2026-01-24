@@ -88,19 +88,27 @@ asyncio.run(main())
 
 ## Configuration
 
-The framework supports configuration via TOML files or environment variables:
+The framework is configured using environment variables:
 
-```toml
-[browser]
-chrome_profile_directory = "Profile 1"
-remote_debugging_port = 9222
-remote_host = "localhost"
+| Environment Variable | Description | Default |
+|---------------------|-------------|---------|
+| `CHROME_PROFILE_DIRECTORY` | Chrome profile to use | `Profile 1` |
+| `CHROME_REMOTE_DEBUGGING_PORT` | Remote debugging port | `9222` |
+| `CHROME_DOWNLOAD_DIRECTORY` | Directory for downloads | (System Default) |
+| `CHROME_USER_DATA_DIR` | User data directory for session persistence | (System Default) |
+
+### Session Persistence (Logins & Cookies)
+
+To maintain login states (cookies, local storage, cache) across different automation runs, you can configure the `user_data_dir`.
+
+*   **Default Behavior:** If `user_data_dir` is not set, Chrome uses your system's default user profile (e.g., `~/.config/google-chrome` on Linux). This means your automation shares the same session as your personal browsing.
+*   **Custom / Isolated Session:** To keep your automation isolated (or to maintain multiple distinct signed-in states), set `user_data_dir` to a specific path. As long as you point to the same directory, Chrome will restore your previous session, keeping you logged in.
+*   **Chrome/Chromium 136+ Requirement:** Recent Chrome **and Chromium** versions (136+) refuse to enable remote debugging on the default profile directory. You must set `user_data_dir` to a non-default path for CDP to work.
+
+**Example (Environment Variable):**
+```bash
+export CHROME_USER_DATA_DIR="./my-bot-profile"
 ```
-
-Environment variables:
-- BROWSER_CONFIG_PATH: Path to custom browser configuration
-- CHROME_PROFILE_DIRECTORY: Override chrome profile directory
-- CHROME_DOWNLOAD_DIRECTORY: Override download directory
 
 ## Contributing
 
