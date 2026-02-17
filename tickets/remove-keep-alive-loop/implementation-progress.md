@@ -21,7 +21,12 @@
 | Full Integration Suite | existing `tests/integration/browser/*` | Blocked | Current runner lacks stable env/setup for full suite (pytest-asyncio + local runtime assumptions). |
 
 ## Blockers
-- Downstream MCP still calling removed `start_keep_alive` must be updated to consume `brui_core==2.0.0`.
+- None.
+
+## Release Status
+- Commit pushed to `main`: `cf07c34`
+- Git tag pushed: `v2.0.0`
+- PyPI verification: `brui-core==2.0.0` available and consumed by browser-mcp.
 
 ## Docs Sync
 - Updated:
