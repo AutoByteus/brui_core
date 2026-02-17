@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brui_core"
-version = "1.2.1"
+version = "2.0.0"
 description = "Core browser UI automation framework"
 readme = "README.md"
 requires-python = ">=3.11"

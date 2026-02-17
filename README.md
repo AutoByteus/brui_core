@@ -69,6 +69,11 @@ import asyncio
 asyncio.run(main())
 ```
 
+### Lifecycle Note
+
+`UIIntegrator` now uses explicit lifecycle control only. It does **not** run a background keep-alive loop.
+If your page is closed and you need a fresh tab, call `await ui.reopen_page()` explicitly.
+
 ## Requirements
 
 - Python 3.11+
