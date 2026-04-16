@@ -20,6 +20,7 @@ class BrowserManager(metaclass=SingletonMeta):
         self.browser_launch_lock = asyncio.Lock()
         self.playwright: Optional[async_playwright] = None
         self.browser: Optional[Browser] = None
+        self.reset_timeout_seconds = 5.0
 
     async def is_browser_running(self) -> bool:
         try:
@@ -30,18 +31,24 @@ class BrowserManager(metaclass=SingletonMeta):
 
     async def reset_browser_state(self):
         """Reset the browser state and clean up existing connections"""
+        browser = self.browser
+        playwright = self.playwright
+        self.browser = None
+        self.playwright = None
+
         try:
-            if self.browser is not None:
-                await self.browser.close()
-                self.browser = None
-            if self.playwright is not None:
-                await self.playwright.stop()
-                self.playwright = None
+            if browser is not None:
+                try:
+                    await asyncio.wait_for(browser.close(), timeout=self.reset_timeout_seconds)
+                except Exception as e:
+                    logger.warning(f"Error closing stale browser connection during reset: {str(e)}")
+            if playwright is not None:
+                try:
+                    await asyncio.wait_for(playwright.stop(), timeout=self.reset_timeout_seconds)
+                except Exception as e:
+                    logger.warning(f"Error stopping Playwright during reset: {str(e)}")
         except Exception as e:
             logger.error(f"Error resetting browser state: {str(e)}")
-            # Still reset the state even if cleanup fails
-            self.browser = None
-            self.playwright = None
 
     async def ensure_browser_launched(self):
         """Ensure browser is launched, resetting state if necessary"""
