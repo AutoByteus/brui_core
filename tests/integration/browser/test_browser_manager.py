@@ -4,6 +4,7 @@ import asyncio
 import os
 from brui_core.browser.browser_manager import BrowserManager
 from brui_core.browser.browser_launcher import get_chrome_pids, kill_all_chrome_processes
+from brui_core.ui_integrator import UIIntegrator
 
 
 @pytest.fixture(autouse=True)
@@ -140,3 +141,24 @@ async def test_connection_recovery_after_disconnect(browser_manager):
     assert recovered_browser is not None
     assert recovered_browser.is_connected()
     assert recovered_browser is not browser
+
+
+@pytest.mark.asyncio
+async def test_ui_integrator_reinitializes_after_page_only_close(browser_manager):
+    """A later integrator should recover even if the cached browser connection became stale."""
+    first = UIIntegrator()
+    await asyncio.wait_for(first.initialize(), timeout=20)
+
+    try:
+        await first.close(close_page=True, close_context=False, close_browser=False)
+
+        second = UIIntegrator()
+        try:
+            await asyncio.wait_for(second.initialize(), timeout=20)
+            assert second.page is not None
+            assert second.page.is_closed() is False
+        finally:
+            await second.close(close_page=True, close_context=False, close_browser=False)
+    finally:
+        if first.page is not None and not first.page.is_closed():
+            await first.close(close_page=True, close_context=False, close_browser=False)

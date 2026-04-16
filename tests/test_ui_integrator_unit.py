@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 import brui_core.ui_integrator as ui_module
@@ -31,22 +33,32 @@ class FakeContext:
         self.closed = True
 
 
+class SlowContext(FakeContext):
+    async def new_page(self) -> FakePage:
+        await asyncio.sleep(1)
+        return await super().new_page()
+
+
 class FakeBrowserManager:
     def __init__(self) -> None:
-        self.context = FakeContext()
+        self.contexts = [FakeContext()]
         self.stopped = False
         self.launched = False
-        self.connected = False
+        self.connect_calls: list[bool] = []
+        self.reset_calls = 0
 
     async def ensure_browser_launched(self) -> None:
         self.launched = True
 
-    async def connect_browser(self):
-        self.connected = True
-        return object()
+    async def connect_browser(self, reconnect: bool = False):
+        self.connect_calls.append(reconnect)
+        return len(self.connect_calls) - 1
 
-    async def get_browser_context(self, _browser) -> FakeContext:
-        return self.context
+    async def get_browser_context(self, browser_index) -> FakeContext:
+        return self.contexts[browser_index]
+
+    async def reset_browser_state(self) -> None:
+        self.reset_calls += 1
 
     async def stop_browser(self) -> None:
         self.stopped = True
@@ -59,7 +71,7 @@ def fake_integrator(monkeypatch: pytest.MonkeyPatch):
     return integrator
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_initialize_creates_context_and_page(fake_integrator):
     await fake_integrator.initialize()
 
@@ -69,7 +81,7 @@ async def test_initialize_creates_context_and_page(fake_integrator):
     assert fake_integrator.page.url == "about:blank"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_reopen_page_replaces_existing_page(fake_integrator):
     await fake_integrator.initialize()
     old_page = fake_integrator.page
@@ -82,7 +94,7 @@ async def test_reopen_page_replaces_existing_page(fake_integrator):
     assert fake_integrator.page is not old_page
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_close_respects_close_flags(fake_integrator):
     await fake_integrator.initialize()
     manager = fake_integrator.browser_manager
@@ -97,7 +109,20 @@ async def test_close_respects_close_flags(fake_integrator):
     assert manager.stopped is True
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_reopen_page_requires_initialized(fake_integrator):
     with pytest.raises(RuntimeError, match="UIIntegrator is not initialized"):
         await fake_integrator.reopen_page()
+
+
+@pytest.mark.asyncio
+async def test_initialize_recovers_after_page_creation_timeout(fake_integrator):
+    fake_integrator.browser_manager.contexts = [SlowContext(), FakeContext()]
+    fake_integrator.page_creation_timeout_seconds = 0.01
+
+    await fake_integrator.initialize()
+
+    assert fake_integrator.initialized is True
+    assert fake_integrator.page is not None
+    assert fake_integrator.browser_manager.connect_calls == [False, True]
+    assert fake_integrator.browser_manager.reset_calls == 1

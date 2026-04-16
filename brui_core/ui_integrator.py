@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Optional
 
@@ -8,11 +9,48 @@ from brui_core.browser.browser_manager import BrowserManager
 logger = logging.getLogger(__name__)
 
 class UIIntegrator:
+    page_creation_timeout_seconds = 10.0
+
     def __init__(self):
         self.browser_manager = BrowserManager()
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
         self.initialized = False
+
+    async def _connect_browser_context(self, *, reconnect: bool = False) -> BrowserContext:
+        logger.info("Connecting to browser...")
+        browser = await self.browser_manager.connect_browser(reconnect=reconnect)
+        logger.info("Successfully connected to browser")
+
+        logger.info("Accessing browser context...")
+        self.context = await self.browser_manager.get_browser_context(browser)
+        logger.info(f"Successfully accessed browser context. Pages in context: {len(self.context.pages)}")
+        return self.context
+
+    async def _create_page(self) -> Page:
+        if self.context is None:
+            raise RuntimeError("Browser context is not initialized")
+        return await asyncio.wait_for(
+            self.context.new_page(),
+            timeout=self.page_creation_timeout_seconds,
+        )
+
+    async def _create_page_with_recovery(self) -> Page:
+        logger.info("Creating new page...")
+        try:
+            page = await self._create_page()
+        except Exception as error:
+            logger.warning(
+                "Initial page creation failed. Resetting browser state and retrying once: %s",
+                error,
+            )
+            await self.browser_manager.reset_browser_state()
+            await self.browser_manager.ensure_browser_launched()
+            await self._connect_browser_context(reconnect=True)
+            page = await self._create_page()
+
+        logger.info(f"New page created successfully. URL: {page.url}")
+        return page
 
     async def initialize(self):
         """Initialize the browser and create a new page."""
@@ -22,23 +60,14 @@ class UIIntegrator:
         await self.browser_manager.ensure_browser_launched()
         logger.info("Browser launch check completed successfully")
         
-        logger.info("Connecting to browser...")
-        browser = await self.browser_manager.connect_browser()
-        logger.info("Successfully connected to browser")
-        
-        logger.info("Accessing browser context...")
         try:
-            # Use the get_browser_context method instead of direct access
-            self.context = await self.browser_manager.get_browser_context(browser)
-            logger.info(f"Successfully accessed browser context. Pages in context: {len(self.context.pages)}")
+            await self._connect_browser_context()
         except Exception as e:
             logger.error(f"Failed to access browser context: {str(e)}")
             raise
-        
-        logger.info("Creating new page...")
+
         try:
-            self.page = await self.context.new_page()
-            logger.info(f"New page created successfully. URL: {self.page.url}")
+            self.page = await self._create_page_with_recovery()
         except Exception as e:
             logger.error(f"Failed to create new page: {str(e)}")
             raise
@@ -57,7 +86,7 @@ class UIIntegrator:
                 await self.page.close()
                 logger.info("Closed existing page")
 
-            self.page = await self.context.new_page()
+            self.page = await self._create_page_with_recovery()
             logger.info("Opened new page")
         except Exception as e:
             logger.error(f"Error while reopening page: {str(e)}")
